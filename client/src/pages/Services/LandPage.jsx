@@ -1,24 +1,20 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
-
-// --- NEW: Import for blockchain connection ---
 import { connectWalletAndContract } from '../../utils/blockchainService';
 
 const LandPage = () => {
-    const { user } = useSelector((state) => state.auth);
     const navigate = useNavigate();
 
     // --- STATE MANAGEMENT: Merged original state with new blockchain state ---
     const [activeTab, setActiveTab] = useState('add-new-land');
-    const [loading, setLoading] = useState(false); // For blockchain transactions
-    const [account, setAccount] = useState(null); // For connected wallet address
-    const [uploadedFiles, setUploadedFiles] = useState({}); // Your original file state
+    const [loading, setLoading] = useState(false);
+    const [account, setAccount] = useState(null);
+    const [uploadedFiles, setUploadedFiles] = useState({});
 
-    // Your original useForm hooks remain unchanged
+    // Your original useForm hooks
     const { register: registerForm, handleSubmit: handleNewSubmit, formState: { errors: newErrors } } = useForm();
     const { register: transferForm, handleSubmit: handleTransferSubmit, formState: { errors: transferErrors } } = useForm();
     const { register: permissionForm, handleSubmit: handlePermissionSubmit, formState: { errors: permissionErrors } } = useForm();
@@ -35,16 +31,16 @@ const LandPage = () => {
         }
     };
 
-    // Your original file change handler remains unchanged
+    // Your original file change handler
     const handleFileChange = (e, fieldName) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) { toast.error('File size too large. Maximum size is 5MB.'); return; }
+            if (file.size > 5 * 1024 * 1024) { toast.error('File size is too large.'); return; }
             setUploadedFiles(prev => ({ ...prev, [fieldName]: file }));
         }
     };
 
-    // --- MODIFIED: Form submission now calls the smart contract instead of the API ---
+    // --- MODIFIED: Form submission now calls the smart contract ---
     const onAddNewLand = async (data) => {
         if (!account) { toast.error("Please connect your wallet first."); return; }
         setLoading(true);
@@ -55,6 +51,7 @@ const LandPage = () => {
             const transaction = await contract.registerLand(data.location, data.size);
             await transaction.wait();
             toast.success('Land successfully registered on the blockchain!');
+            // After blockchain success, you can optionally add your api.post() here to upload the document files to your server
         } catch (err) {
             toast.error(err.reason || "Transaction failed.");
             console.error(err);
@@ -68,8 +65,6 @@ const LandPage = () => {
         setLoading(true);
         try {
             const { contract } = await connectWalletAndContract();
-            // NOTE: The transfer form in your UI doesn't have the necessary fields.
-            // I've added the required fields: toAddress and landId.
             const transaction = await contract.transferLand(data.toAddress, data.landId);
             await transaction.wait();
             toast.success('Land successfully transferred on the blockchain!');
@@ -86,24 +81,21 @@ const LandPage = () => {
         setLoading(true);
         try {
             const { contract } = await connectWalletAndContract();
-             // NOTE: The permission form in your UI doesn't have the necessary field.
-            // I've added the required field: landId.
             const transaction = await contract.grantBuildingPermission(data.landId);
             await transaction.wait();
             toast.success('Building permission granted on the blockchain!');
         } catch (err) {
-            toast.error(err.reason || "Transaction failed. Note: Only the contract owner can grant permission.");
+            toast.error(err.reason || "Transaction failed. Note: Only the contract owner can do this.");
             console.error(err);
         } finally {
             setLoading(false);
         }
     };
 
-    // Your original tabs array remains unchanged
     const tabs = [
-        { id: 'add-new-land', label: 'Add New Land', icon: ( <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg> ) },
-        { id: 'transfer-land', label: 'Transfer Land', icon: ( <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg> ) },
-        { id: 'building-permission', label: 'Building Permission', icon: ( <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> ) }
+        { id: 'add-new-land', label: 'Add New Land', icon: ( <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg> ) },
+        { id: 'transfer-land', label: 'Transfer Land', icon: ( <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg> ) },
+        { id: 'building-permission', label: 'Building Permission', icon: ( <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> ) }
     ];
 
     return (
@@ -115,28 +107,25 @@ const LandPage = () => {
                         <p className="text-gray-600">Manage your land registrations and services</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/services/land/processes')} className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">My Land Processes</button>
+                        <button onClick={() => navigate('/services/land/processes')} className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700">My Land Processes</button>
                         {account ? (
                             <div className="p-2 bg-green-100 text-green-800 rounded-lg text-sm shadow-sm">✅ Connected: <span className="font-mono">{`${account.substring(0, 6)}...${account.substring(account.length - 4)}`}</span></div>
                         ) : (
-                            <button onClick={handleConnectWallet} className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors">Connect Wallet</button>
+                            <button onClick={handleConnectWallet} className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-700">Connect Wallet</button>
                         )}
                     </div>
                 </div>
-
                 <div className="bg-white rounded-xl shadow-soft overflow-hidden">
                     <div className="border-b border-gray-200">
                         <nav className="flex space-x-8 px-6 overflow-x-auto">
                             {tabs.map((tab) => (
-                                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${activeTab === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                                     {tab.icon}<span>{tab.label}</span>
                                 </button>
                             ))}
                         </nav>
                     </div>
-
                     <div className="p-6">
-                        {/* Add New Land Tab - YOUR FULL ORIGINAL UI */}
                         {activeTab === 'add-new-land' && (
                             <div>
                                 <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-2">Add New Land Registration</h2><p className="text-gray-600">Submit required documents for new land registration</p></div>
@@ -144,9 +133,9 @@ const LandPage = () => {
                                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                                         <h3 className="text-lg font-medium text-gray-900 mb-4">Land Information</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div><label className="form-label">Land Location</label><input {...registerForm('location', { required: 'Land location is required' })} type="text" className="form-input" placeholder="e.g. District, City" />{newErrors.location && <p className="form-error">{newErrors.location.message}</p>}</div>
+                                            <div><label className="form-label">Land Location</label><input {...registerForm('location', { required: 'Land location is required' })} className="form-input" placeholder="e.g. District, City" />{newErrors.location && <p className="form-error">{newErrors.location.message}</p>}</div>
                                             <div><label className="form-label">Land Size (Square Meters)</label><input {...registerForm('size', { required: 'Land size is required' })} type="number" className="form-input" placeholder="e.g. 1000" />{newErrors.size && <p className="form-error">{newErrors.size.message}</p>}</div>
-                                            <div><label className="form-label">Land Type</label><select {...registerForm('landType', { required: 'Land type is required' })} className="form-select"><option value="">Select land type</option><option>Residential</option><option>Commercial</option></select>{newErrors.landType && <p className="form-error">{newErrors.landType.message}</p>}</div>
+                                            <div><label className="form-label">Land Type</label><select {...registerForm('landType', { required: 'Land type is required' })} className="form-select"><option value="">Select land type</option><option value="Residential">Residential</option><option value="Commercial">Commercial</option></select>{newErrors.landType && <p className="form-error">{newErrors.landType.message}</p>}</div>
                                             <div><label className="form-label">Current Use</label><input {...registerForm('currentUse', { required: 'Current use is required' })} className="form-input" placeholder="e.g. Vacant, Farm, Building" />{newErrors.currentUse && <p className="form-error">{newErrors.currentUse.message}</p>}</div>
                                         </div>
                                     </div>
@@ -164,8 +153,6 @@ const LandPage = () => {
                                 </form>
                             </div>
                         )}
-
-                        {/* Transfer Land Tab - YOUR ORIGINAL UI, MODIFIED FOR BLOCKCHAIN */}
                         {activeTab === 'transfer-land' && (
                             <div>
                                 <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-2">Land Transfer</h2><p className="text-gray-600">Transfer land ownership between persons</p></div>
@@ -190,8 +177,6 @@ const LandPage = () => {
                                 </form>
                             </div>
                         )}
-                        
-                        {/* Building Permission Tab - YOUR ORIGINAL UI, MODIFIED FOR BLOCKCHAIN */}
                         {activeTab === 'building-permission' && (
                             <div>
                                 <div className="mb-6"><h2 className="text-xl font-semibold text-gray-900 mb-2">Building Permission</h2><p className="text-gray-600">Get permission to build on land</p></div>
