@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import LandRegistryArtifact from '../contracts/LandRegistry.json';
 
 // This address will be updated after you deploy your contract
-const contractAddress = "0x21D10f74614177a50bCC243EF28F08001C4dd4C5";
+const contractAddress = "0xb12F3B5aCb93CC6aE3d139809E559C2EDA30731d";
 const contractABI = LandRegistryArtifact.abi;
 let contract;
 let signer;

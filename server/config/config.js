@@ -1,7 +1,7 @@
 const config = {
   development: {
     port: process.env.PORT || 5003,
-    mongodbUri: process.env.MONGODB_URI || 'mongodb+srv://ssswar367:dg3KCnDEGnsNO3Nl@cluster0.zm5ukgt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
+    mongodbUri: process.env.MONGODB_URI,
     jwtSecret: process.env.JWT_SECRET || 'transport_ministry_super_secret_key_2024_secure',
     jwtExpire: process.env.JWT_EXPIRE || '30d',
     cookieExpire: process.env.COOKIE_EXPIRE || 30,

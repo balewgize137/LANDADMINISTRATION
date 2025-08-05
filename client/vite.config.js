@@ -10,7 +10,7 @@ export default defineConfig({
       '/api': {
         target: process.env.NODE_ENV === 'production' 
           ? 'https://ministryoftransport.vercel.app'
-          : 'http://localhost:5003',
+          : 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       }

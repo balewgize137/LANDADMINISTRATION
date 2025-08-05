@@ -14,7 +14,6 @@ contract LandRegistry {
         bool isVerified;
     }
 
-    // --- CORRECTED: Struct is now fully defined ---
     struct User {
         string name;
         string role;
@@ -25,12 +24,11 @@ contract LandRegistry {
     mapping(uint256 => Land) public lands;
     mapping(address => User) public users;
 
-    // --- CORRECTED: Modifier now has its body ---
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can perform this action");
         _;
     }
-    
+
     event LandTransferred(uint256 indexed landId, address indexed from, address indexed to);
 
     constructor() {
@@ -53,7 +51,7 @@ contract LandRegistry {
         require(lands[_landId].id != 0, "Land does not exist");
         lands[_landId].isVerified = true;
     }
-    
+
     function transferLand(address _to, uint256 _landId) public {
         require(lands[_landId].owner == msg.sender, "You are not the owner of this land.");
         require(users[_to].isRegistered, "The recipient is not a registered user.");
@@ -84,6 +82,7 @@ contract LandRegistry {
         return count;
     }
 
+    // --- NEW FUNCTION TO GET ALL LAND DETAILS ---
     function getAllLands() public view returns (Land[] memory) {
         Land[] memory allLands = new Land[](totalLands);
         for (uint i = 0; i < totalLands; i++) {

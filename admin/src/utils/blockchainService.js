@@ -4,7 +4,7 @@ import LandRegistryArtifact from '../contracts/LandRegistry.json';
 
 // --- IMPORTANT ---
 // Paste the same, most recent contract address here that you used for the client app.
-const contractAddress = "0x21D10f74614177a50bCC243EF28F08001C4dd4C5";
+const contractAddress = "0xb12F3B5aCb93CC6aE3d139809E559C2EDA30731d";
 const contractABI = LandRegistryArtifact.abi;
 
 let contract;

@@ -13,6 +13,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 // --- NEW: Import for blockchain connection ---
 import { connectWalletAndContract } from '../utils/blockchainService';
+import toast from 'react-hot-toast'; // Good for showing errors
 
 const AdminDashboard = () => {
   const { token } = useSelector((state) => state.auth);
@@ -25,26 +26,28 @@ const AdminDashboard = () => {
   });
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // --- NEW: State to hold the detailed list of lands from the blockchain ---
+  const [landApplications, setLandApplications] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [token]); // Added token dependency
+  }, [token]);
 
   // --- MODIFIED: This function now fetches from both the blockchain and your API ---
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
-      // Connect to the smart contract first
       const { contract } = await connectWalletAndContract();
 
-      // Create a list of promises to fetch data from all sources
       const promises = [
-        contract.getTotalUsers(), // From Blockchain
-        contract.getTotalLands(), // From Blockchain
-        contract.getVerifiedLandsCount(), // From Blockchain
-        fetch('/api/vehicles/stats', { headers: { 'Authorization': `Bearer ${token}` } }), // From API
-        fetch('/api/licenses/stats', { headers: { 'Authorization': `Bearer ${token}` } }) // From API
+        contract.getTotalUsers(),
+        contract.getTotalLands(),
+        contract.getVerifiedLandsCount(),
+        contract.getAllLands(), // Fetching the detailed list
+        fetch('/api/vehicles/stats', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/licenses/stats', { headers: { 'Authorization': `Bearer ${token}` } })
       ];
 
       const results = await Promise.allSettled(promises);
@@ -53,30 +56,33 @@ const AdminDashboard = () => {
           usersResult,
           landsResult,
           verifiedLandsResult,
+          allLandsResult,
           vehiclesResult,
           licensesResult
       ] = results;
 
       const newStats = { ...stats };
 
-      // Process User and Land stats from the blockchain
+      // Process Blockchain Stats
       if (usersResult.status === 'fulfilled') {
         const totalUsers = Number(usersResult.value);
-        newStats.users = { total: totalUsers, active: totalUsers, admins: 0 }; // Contract doesn't track admins
+        newStats.users = { total: totalUsers, active: totalUsers, admins: 0 };
       }
       if (landsResult.status === 'fulfilled' && verifiedLandsResult.status === 'fulfilled') {
         const totalLands = Number(landsResult.value);
         const verifiedLands = Number(verifiedLandsResult.value);
         newStats.land = { total: totalLands, approved: verifiedLands, pending: totalLands - verifiedLands, rejected: 0 };
       }
+      if (allLandsResult.status === 'fulfilled') {
+        // Update the state for the detailed table
+        setLandApplications(allLandsResult.value);
+      }
 
-      // Process Vehicle stats from your API
+      // Process API Stats
       if (vehiclesResult.status === 'fulfilled' && vehiclesResult.value.ok) {
         const vehicleData = await vehiclesResult.value.json();
         newStats.vehicles = vehicleData.stats || newStats.vehicles;
       }
-
-      // Process License stats from your API
       if (licensesResult.status === 'fulfilled' && licensesResult.value.ok) {
         const licenseData = await licensesResult.value.json();
         newStats.licenses = licenseData.stats || newStats.licenses;
@@ -84,22 +90,20 @@ const AdminDashboard = () => {
 
       setStats(newStats);
 
-      // Your original mock recent activity data (unchanged)
+      // Your original mock recent activity data
       setRecentActivity([
         { id: 1, type: 'Vehicle Registration', description: 'New vehicle application submitted', user: 'John Doe', time: '2 minutes ago', status: 'pending', icon: Car },
         { id: 2, type: 'License Application', description: 'Driver license application approved', user: 'Jane Smith', time: '15 minutes ago', status: 'approved', icon: CreditCard },
-        { id: 3, type: 'User Registration', description: 'New blockchain user registered', user: 'Mike Johnson', time: '1 hour ago', status: 'completed', icon: Users },
       ]);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error("Could not fetch dashboard data. Check your connection.");
+      toast.error("Could not fetch dashboard data.");
     } finally {
       setLoading(false);
     }
   };
 
-  // The rest of your file remains EXACTLY THE SAME
   const getStatusColor = (status) => {
     switch (status) {
       case 'approved': case 'completed': return 'text-green-600 bg-green-100';
@@ -114,6 +118,7 @@ const AdminDashboard = () => {
     return ( <div className="flex items-center justify-center h-64"><LoadingSpinner /></div> );
   }
 
+  // --- YOUR ENTIRE ORIGINAL UI IS PRESERVED BELOW ---
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -124,56 +129,54 @@ const AdminDashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Users Stats */}
         <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.users.total}</p>
-              <p className="text-sm text-primary-600 mt-1"><span className="font-medium">{stats.users.active}</span> active</p>
-            </div>
-            <div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center"><Users className="h-6 w-6 text-primary-600" /></div>
-          </div>
+          <div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Total Users</p><p className="text-2xl font-bold text-gray-900">{stats.users.total}</p><p className="text-sm text-primary-600 mt-1"><span className="font-medium">{stats.users.active}</span> active</p></div><div className="h-12 w-12 bg-primary-100 rounded-lg flex items-center justify-center"><Users className="h-6 w-6 text-primary-600" /></div></div>
         </div>
-
-        {/* Vehicle Applications */}
         <div className="card">
-           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Vehicle Applications</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.vehicles.total}</p>
-              <p className="text-sm text-yellow-600 mt-1"><span className="font-medium">{stats.vehicles.pending}</span> pending</p>
-            </div>
-            <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center"><Car className="h-6 w-6 text-green-600" /></div>
-          </div>
+          <div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Vehicle Applications</p><p className="text-2xl font-bold text-gray-900">{stats.vehicles.total}</p><p className="text-sm text-yellow-600 mt-1"><span className="font-medium">{stats.vehicles.pending}</span> pending</p></div><div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center"><Car className="h-6 w-6 text-green-600" /></div></div>
         </div>
-
-        {/* License Applications */}
         <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">License Applications</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.licenses.total}</p>
-              <p className="text-sm text-orange-600 mt-1"><span className="font-medium">{stats.licenses.pending}</span> pending</p>
-            </div>
-            <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center"><CreditCard className="h-6 w-6 text-orange-600" /></div>
-          </div>
+          <div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">License Applications</p><p className="text-2xl font-bold text-gray-900">{stats.licenses.total}</p><p className="text-sm text-orange-600 mt-1"><span className="font-medium">{stats.licenses.pending}</span> pending</p></div><div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center"><CreditCard className="h-6 w-6 text-orange-600" /></div></div>
         </div>
-
-        {/* Land Applications */}
         <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Land Applications</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.land.total}</p>
-              <p className="text-sm text-purple-600 mt-1"><span className="font-medium">{stats.land.pending}</span> pending</p>
-            </div>
-            <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center"><MapPin className="h-6 w-6 text-purple-600" /></div>
-          </div>
+          <div className="flex items-center justify-between"><div><p className="text-sm font-medium text-gray-600">Land Applications</p><p className="text-2xl font-bold text-gray-900">{stats.land.total}</p><p className="text-sm text-purple-600 mt-1"><span className="font-medium">{stats.land.pending}</span> pending</p></div><div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center"><MapPin className="h-6 w-6 text-purple-600" /></div></div>
+        </div>
+      </div>
+      
+      {/* --- THIS IS YOUR DETAILED TABLE, NOW POPULATED WITH BLOCKCHAIN DATA --- */}
+      <div className="bg-white p-6 rounded-lg shadow-md mt-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">All Land Applications (from Blockchain)</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Application ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner Address</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size (sqm)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {landApplications.map((app) => (
+                <tr key={Number(app.id)}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Land #{Number(app.id)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono" title={app.owner}>{`${app.owner.substring(0, 8)}...${app.owner.substring(app.owner.length - 6)}`}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{app.location}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{Number(app.size)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={app.isVerified ? 'text-green-600 bg-green-100 px-2 py-1 rounded-full' : 'text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full'}>
+                      {app.isVerified ? 'Verified' : 'Pending'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Quick Actions and the rest of your UI... */}
+      {/* The rest of your original UI */}
       <div className="card">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
